@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green Loan Admin Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind to use Inter font -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        // Custom green/emerald theme
+                        primary: {
+                            '50': '#f0fdf4',
+                            '100': '#dcfce7',
+                            '200': '#bbf7d0',
+                            '300': '#86efac',
+                            '400': '#4ade80',
+                            '500': '#22c55e',
+                            '600': '#16a34a', // Main theme color
+                            '700': '#15803d',
+                            '800': '#166534',
+                            '900': '#14532d',
+                            '950': '#052e16',
+                        },
+                        // Colors for Main Status badges
+                        status: {
+                            processing: {
+                                bg: '#e0f2fe', // blue-100
+                                text: '#0284c7' // blue-700
+                            },
+                            onhold: {
+                                bg: '#fef3c7', // yellow-100
+                                text: '#a16207' // yellow-700
+                            },
+                            decisioned: {
+                                bg: '#f3e8ff', // purple-100
+                                text: '#7e22ce' // purple-700
+                            },
+                            closed: {
+                                bg: '#dcfce7', // green-100
+                                text: '#16a34a' // green-600
+                            },
+                            pre: {
+                                bg: '#f3f4f6', // gray-100
+                                text: '#4b5563' // gray-600
+                            }
+                        }
+                    }
+                },
+            },
+        };
+    </script>
+    <style>
+        /* Custom scrollbar for the activity history */
+        #activity-history::-webkit-scrollbar {
+            width: 6px;
+        }
+        #activity-history::-webkit-scrollbar-track {
+            background: #f1f5f9; /* gray-100 */
+            border-radius: 10px;
+        }
+        #activity-history::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* gray-400 */
+            border-radius: 10px;
+        }
+        #activity-history::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* gray-500 */
+        }
+
+        /* Show mobile labels */
+        @media (max-width: 767px) {
+            .app-row .mobile-label {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans antialiased relative overflow-x-hidden">
+
+    <!-- Backdrop -->
+    <div id="backdrop" class="fixed inset-0 bg-black/50 z-40 hidden transition-opacity duration-300"></div>
+
+    <!-- Main Dashboard Content -->
+    <main id="dashboard" class="w-full min-h-screen p-4 md:p-8 transition-all duration-300">
+        
+        <!-- Header -->
+        <header class="mb-6 flex items-center gap-3">
+            <svg class="w-8 h-8 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a.969.969 0 00.933 1H13.5a1.5 1.5 0 001.5-1.5V6.75A1.5 1.5 0 0013.5 5.25h-3a1.5 1.5 0 00-1.5 1.5v11.25c0 .38.016.754.046 1.114M12 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z" />
+            </svg>
+            <h1 class="text-3xl font-bold text-gray-900">Green Loan Admin Dashboard</h1>
+        </header>
+
+        <!-- Filter Bar -->
+        <nav class="mb-6 flex flex-col gap-4">
+            <!-- Search & Assignee Filter -->
+            <div class="flex flex-col md:flex-row gap-4">
+                <!-- Search -->
+                <div class="relative flex-grow">
+                    <input type="text" placeholder="Search by App ID, Customer, EV Loan..." class="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                </div>
+                <!-- Filter by Assignee -->
+                <select class="rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 md:w-auto">
+                    <option value="">All Assignees</option>
+                    <option value="customer">Customer</option>
+                    <option value="sarah_k">Sarah K.</option>
+                    <option value="mark_b">Mark B.</option>
+                    <option value="referrer">Specialist Referrer</option>
+                    <option value="unassigned">Unassigned</option>
+                    <option value="operations">Operations</option>
+                    <option value="finance">Finance</option>
+                </select>
+            </div>
+            
+            <!-- *** Level 1 & 2 Dropdown Filters *** -->
+            <div class="flex flex-col md:flex-row gap-4">
+                <!-- Main Status Dropdown -->
+                <div class="flex-1">
+                    <label for="main-status-select" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select id="main-status-select" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                        <!-- Options will be injected by JS -->
+                    </select>
+                </div>
+
+                <!-- Sub-Status Dropdown -->
+                <div class="flex-1">
+                    <label for="sub-status-select" class="block text-sm font-medium text-gray-700 mb-1">Sub-Status</label>
+                    <select id="sub-status-select" class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500" disabled>
+                        <!-- Options will be injected by JS -->
+                    </select>
+                </div>
+            </div>
+
+        </nav>
+
+        <!-- Application List -->
+        <section id="application-list" class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <!-- List Header (Desktop) -->
+            <div class="hidden md:grid md:grid-cols-5 gap-4 font-bold text-gray-500 text-sm uppercase p-5 border-b border-gray-200">
+                <div class="col-span-1">App ID</div>
+                <div class="col-span-1">Customer Name</div>
+                <div class="col-span-1">Application Type</div>
+                <div class="col-span-1">Status</div>
+                <div class="col-span-1">Assigned To</div>
+            </div>
+
+            <!-- Application Rows will be injected here by JavaScript -->
+
+        </section>
+    </main>
+
+    <!-- Side Panel (Initially hidden) -->
+    <aside id="detail-panel" class="fixed top-0 right-0 h-full w-full md:w-2/5 lg:w-1/3 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out z-50 flex flex-col">
+        
+        <!-- Panel Header -->
+        <header class="flex justify-between items-center p-5 border-b border-gray-200">
+            <h2 id="panel-header-title" class="text-xl font-bold text-gray-900">Application Details</h2>
+            <button id="close-panel" class="text-gray-500 hover:text-gray-800" aria-label="Close panel">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </header>
+
+        <!-- Panel Body -->
+        <div class="flex-grow p-6 overflow-y-auto" id="activity-history">
+            
+            <!-- Summary Box -->
+            <section class="summary bg-gray-50 rounded-lg p-5 mb-6 border border-gray-200">
+                <h3 id="panel-app-id" class="text-lg font-bold text-gray-900"></h3>
+                <p id="panel-loan-type" class="text-gray-600 mb-4"></p>
+                
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 font-medium">Current Status:</span>
+                        <span id="panel-status-badge"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 font-medium">Waiting on:</span>
+                        <span id="panel-waiting-on" class="font-semibold text-gray-800"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500 font-medium">Requested by:</span>
+                        <span id="panel-requested-by" class="font-semibold text-gray-800"></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Action Buttons -->
+            <div class="actions flex gap-3 mb-6">
+                <button class="flex-1 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors">Add Internal Note</button>
+                <button class="flex-1 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors">Assign to...</button>
+            </div>
+
+            <!-- Activity History -->
+            <section class="history">
+                <h3 class="text-lg font-bold text-gray-900 mb-4">Activity History</h3>
+                <ul id="panel-history-list" class="space-y-6 border-l-2 border-gray-200 ml-2">
+                    <!-- History items will be injected here -->
+                </ul>
+            </section>
+        </div>
+    </aside>
+
+    <script>
+        // --- MOCK DATA (*** FULLY POPULATED ***) ---
+        const applications = [
+            { id: "102340", customerName: "Ana Garcia", appType: "Home Insulation Loan", status: "DRAFT", originator: "Customer", actor: "Customer" },
+            { id: "102341", customerName: "David Lee", appType: "EV Charger Loan", status: "PENDING_REVIEW", originator: "System", actor: "(Unassigned)" },
+            { id: "102342", customerName: "Emily Chen", appType: "Solar Panel Loan", status: "RESUBMITTED", originator: "Customer", actor: "Sarah K." },
+            { id: "102343", customerName: "Michael Chan", appType: "Electric Vehicle Loan", status: "PENDING_APPROVAL", originator: "Reviewer", actor: "Mark B." },
+            { id: "102344", customerName: "Robert Smith", appType: "EV Charger Loan", status: "RETURNED_TO_REVIEWER", originator: "Approver", actor: "Sarah K." },
+            { id: "102345", customerName: "Jane Doe", appType: "Solar Panel Loan", status: "AWAITING_CUSTOMER_INFO", originator: "Approver", actor: "Customer" },
+            { id: "102346", customerName: "Kenji Watanabe", appType: "Electric Vehicle Loan", status: "PENDING_REFERRAL", originator: "Approver", actor: "Specialist Referrer" },
+            { id: "102348", customerName: "Maria Hernandez", appType: "Electric Vehicle Loan", status: "DECLINED", originator: "Referrer", actor: "System" },
+            
+            // --- NEW WORKFLOW ---
+            { id: "102353", customerName: "Nora Ephron", appType: "Solar Panel Loan", status: "APPROVAL_COMPLETE", originator: "Approver", actor: "System" },
+            { id: "102354", customerName: "Leo Tolstoy", appType: "Home Insulation Loan", status: "AWAITING_CONTRACT_SIGNATURE", originator: "System", actor: "Customer" },
+            { id: "102355", customerName: "Jane Austen", appType: "EV Charger Loan", status: "CONTRACTS_SIGNED", originator: "Customer", actor: "System" },
+            { id: "102356", customerName: "Oscar Wilde", appType: "Solar Panel Loan", status: "LOAN_CREATED", originator: "System", actor: "Operations" },
+            { id: "102352", customerName: "Charles Brown", appType: "EV Charger Loan", status: "READY_FOR_DISBURSEMENT", originator: "System", actor: "Finance" },
+            // --- END NEW WORKFLOW ---
+
+            { id: "102349", customerName: "Tom Ivanich", appType: "Solar Panel Loan", status: "FUNDED", originator: "System", actor: "System" },
+            { id: "102350", customerName: "Fatima Al-Jamil", appType: "EV Charger Loan", status: "WITHDRAWN", originator: "Customer", actor: "System" }
+        ];
+
+        const applicationDetails = {
+            "102340": { id: "102340", customerName: "Ana Garcia", loanType: "Home Insulation Loan", loanAmount: "$7,000", status: "DRAFT", waitingOn: "Customer", requestedBy: "N/A", 
+                history: [
+                    { timestamp: "Today - 11:30 AM", action: "Application 'Draft' created.", note: "Customer started application." }
+                ] 
+            },
+            "102341": { id: "102341", customerName: "David Lee", loanType: "EV Charger Loan", loanAmount: "$1,500", status: "PENDING_REVIEW", waitingOn: "(Unassigned)", requestedBy: "System", 
+                history: [
+                    { timestamp: "Yesterday - 5:00 PM", action: "Status changed to 'Pending Review'", note: "New application received and auto-assigned to the 'EV Charger' queue." }
+                ] 
+            },
+            "102342": { id: "102342", customerName: "Emily Chen", loanType: "Solar Panel Loan", loanAmount: "$22,000", status: "RESUBMITTED", waitingOn: "Sarah K. (Reviewer)", requestedBy: "Customer", 
+                history: [
+                    { timestamp: "Today - 7:05 AM", action: "Status changed to 'Resubmitted'", note: "Customer uploaded 2 new documents." },
+                    { timestamp: "Oct 26, 2025 - 10:30 AM", action: "Status changed to 'Awaiting Customer Information'", note: "Note from Sarah K. (Reviewer): 'Please provide quote from solar installer.'" },
+                    { timestamp: "Oct 26, 2025 - 9:00 AM", action: "Application submitted by customer." }
+                ] 
+            },
+            "102343": { id: "102343", customerName: "Michael Chan", loanType: "Electric Vehicle Loan", loanAmount: "$55,000", status: "PENDING_APPROVAL", waitingOn: "Mark B. (Approver)", requestedBy: "Sarah K. (Reviewer)", 
+                history: [
+                    { timestamp: "Today - 8:30 AM", action: "Status changed to 'Pending Approval'", note: "Reviewer (Sarah K.) approved and referred to Approver." },
+                    { timestamp: "Yesterday - 1:00 PM", action: "Application submitted by customer." }
+                ] 
+            },
+            "102344": { id: "102344", customerName: "Robert Smith", loanType: "EV Charger Loan", loanAmount: "$2,500", status: "RETURNED_TO_REVIEWER", waitingOn: "Sarah K. (Reviewer)", requestedBy: "Mark B. (Approver)", 
+                history: [
+                    { timestamp: "Today - 9:15 AM", action: "Status changed to 'Pending Rework'", note: "Note from Mark B. (Approver): 'DTI ratio is borderline. Please double-check income calcs.'" },
+                    { timestamp: "Yesterday - 2:00 PM", action: "Status changed to 'Pending Approval'", note: "Reviewer (Sarah K.) approved and referred to Approver." },
+                    { timestamp: "Oct 25, 2025 - 10:00 AM", action: "Application submitted by customer." }
+                ] 
+            },
+            "102345": { id: "102345", customerName: "Jane Doe", loanType: "Solar Panel Loan", loanAmount: "$30,000", status: "AWAITING_CUSTOMER_INFO", waitingOn: "Customer", requestedBy: "Mark B. (Approver)", 
+                history: [
+                    { timestamp: "Today - 11:01 AM", action: "Status changed to 'Awaiting Customer Info'", note: "Note from Mark B. (Approver): 'Paystub from last month is missing. Please upload.'" },
+                    { timestamp: "Yesterday - 4:32 PM", action: "Status changed to 'Pending Approval'", note: "Reviewer (Sarah K.) approved and referred to Approver." },
+                    { timestamp: "Oct 26, 2025 - 9:15 AM", action: "Application submitted by customer." }
+                ] 
+            },
+            "102346": { id: "102346", customerName: "Kenji Watanabe", loanType: "Electric Vehicle Loan", loanAmount: "$78,000", status: "PENDING_REFERRAL", waitingOn: "Specialist Referrer", requestedBy: "Mark B. (Approver)", 
+                history: [
+                    { timestamp: "Today - 11:15 AM", action: "Status changed to 'Pending Referral'", note: "Note from Mark B. (Approver): 'Loan amount is over standard approval limit. Sending to senior credit for referral.'" },
+                    { timestamp: "Today - 10:00 AM", action: "Status changed to 'Pending Approval'", note: "Reviewer (Sarah K.) approved and referred to Approver." },
+                    { timestamp: "Yesterday - 3:00 PM", action: "Application submitted by customer." }
+                ] 
+            },
+            "102348": { id: "102348", customerName: "Maria Hernandez", loanType: "Electric Vehicle Loan", loanAmount: "$62,000", status: "DECLINED", waitingOn: "N/A", requestedBy: "Specialist Referrer", 
+                history: [
+                    { timestamp: "Today - 10:45 AM", action: "Status changed to 'Declined'", note: "Note from Specialist Referrer: 'Debt-to-income ratio (55%) is too high given the requested loan amount.'" },
+                    { timestamp: "Yesterday - 11:00 AM", action: "Status changed to 'Pending Referral'", note: "Sent by Approver for specialist review." },
+                    { timestamp: "Oct 26, 2025 - 1:00 PM", action: "Application submitted by customer." }
+                ] 
+            },
+            
+            // --- NEW WORKFLOW DETAILS ---
+            "102353": { id: "102353", customerName: "Nora Ephron", loanType: "Solar Panel Loan", loanAmount: "$40,000", status: "APPROVAL_COMPLETE", waitingOn: "System", requestedBy: "Mark B. (Approver)",
+                history: [
+                    { timestamp: "Today - 3:00 PM", action: "Status changed to 'Approval Complete'", note: "Internal underwriting is complete. Triggering e-signature to customer." },
+                    { timestamp: "Today - 1:00 PM", action: "Status changed to 'Pending Approval'", note: "Reviewer (Sarah K.) approved and referred to Approver." }
+                ]
+            },
+            "102354": { id: "102354", customerName: "Leo Tolstoy", loanType: "Home Insulation Loan", loanAmount: "$12,000", status: "AWAITING_CONTRACT_SIGNATURE", waitingOn: "Customer", requestedBy: "System",
+                history: [
+                    { timestamp: "Today - 3:01 PM", action: "Status changed to 'Awaiting Contract Signature'", note: "E-signature documents sent to customer." },
+                    { timestamp: "Today - 3:00 PM", action: "Status changed to 'Approval Complete'", note: "Internal underwriting is complete." }
+                ]
+            },
+            "102355": { id: "102355", customerName: "Jane Austen", loanType: "EV Charger Loan", loanAmount: "$3,500", status: "CONTRACTS_SIGNED", waitingOn: "System", requestedBy: "Customer",
+                history: [
+                    { timestamp: "Today - 3:15 PM", action: "Status changed to 'Contracts Signed'", note: "Contract e-signed by customer. Triggering API call to create loan in SOLVI." },
+                    { timestamp: "Today - 3:01 PM", action: "Status changed to 'Awaiting Contract Signature'", note: "E-signature documents sent to customer." }
+                ]
+            },
+            "102356": { id: "102356", customerName: "Oscar Wilde", loanType: "Solar Panel Loan", loanAmount: "$33,000", status: "LOAN_CREATED", waitingOn: "Operations", requestedBy: "System",
+                history: [
+                    { timestamp: "Today - 3:16 PM", action: "Status changed to 'Loan Created'", note: "Loan successfully created in SOLVI (Loan ID: S-88921). Activating pre-disbursement checklist." },
+                    { timestamp: "Today - 3:15 PM", action: "Status changed to 'Contracts Signed'", note: "Customer has successfully e-signed the loan contract." }
+                ]
+            },
+            "102352": { id: "102352", customerName: "Charles Brown", loanType: "EV Charger Loan", loanAmount: "$3,000", status: "READY_FOR_DISBURSEMENT", waitingOn: "Finance", requestedBy: "System",
+                history: [
+                    { timestamp: "Today - 2:15 PM", action: "Status changed to 'Ready for Disbursement'", note: "All pre-disbursement checks are complete. Application moved to Finance queue for payment." },
+                    { timestamp: "Today - 1:00 PM", action: "Checklist: Installer Docs Verified", note: "Ops team verified installer photos and warranty." },
+                    { timestamp: "Yesterday - 3:00 PM", action: "Checklist: Customer Confirmed Installation", note: "Customer confirmed installation via portal." },
+                    { timestamp: "Nov 10, 2025 - 1:00 PM", action: "Status changed to 'Loan Created'", note: "Loan created in SOLVI." }
+                ]
+            },
+            // --- END NEW WORKFLOW ---
+            
+            "102349": { id: "102349", customerName: "Tom Ivanich", loanType: "Solar Panel Loan", loanAmount: "$19,000", status: "FUNDED", waitingOn: "N/A", requestedBy: "System", 
+                history: [
+                    { timestamp: "Today - 9:00 AM", action: "Status changed to 'Funded'", note: "Loan documents signed by customer. Funds disbursed to solar installer." },
+                    { timestamp: "Oct 26, 2025 - 3:00 PM", action: "Status changed to 'Loan Created'", note: "Loan created in SOLVI." },
+                    { timestamp: "Oct 26, 2025 - 10:00 AM", action: "Application submitted by customer." }
+                ] 
+            },
+            "102350": { id: "102350", customerName: "Fatima Al-Jamil", appType: "EV Charger Loan", loanAmount: "$2,000", status: "WITHDRAWN", waitingOn: "N/A", requestedBy: "Customer", 
+                history: [
+                    { timestamp: "Today - 9:30 AM", action: "Status changed to 'Withdrawn'", note: "Customer called and requested to withdraw their application." },
+                    { timestamp: "Yesterday - 4:00 PM", action: "Status changed to 'Pending Review'", note: "Application submitted by customer." }
+                ] 
+            }
+        };
+
+
+        // --- STATE & FILTER LOGIC (*** UPDATED ***) ---
+        
+        // Master definition of all statuses and their relationships
+        const mainStatusMap = {
+            "ALL": { text: "All Statuses", subStatuses: ["ALL"] },
+            "PRE-SUBMISSION": { text: "Pre-Submission", subStatuses: ["ALL", "DRAFT"] },
+            "PROCESSING": { 
+                text: "Processing", 
+                subStatuses: [
+                    "ALL", "PENDING_REVIEW", "PENDING_APPROVAL", "PENDING_REFERRAL", 
+                    "RETURNED_TO_REVIEWER", "RESUBMITTED", "APPROVAL_COMPLETE", "CONTRACTS_SIGNED"
+                ] 
+            },
+            "ON HOLD": { 
+                text: "On Hold", 
+                subStatuses: ["ALL", "AWAITING_CUSTOMER_INFO", "AWAITING_CONTRACT_SIGNATURE"] 
+            },
+            "DECISIONED": { 
+                text: "Decisioned", 
+                subStatuses: ["ALL", "LOAN_CREATED", "READY_FOR_DISBURSEMENT", "DECLINED"] 
+            },
+            "CLOSED": { text: "Closed", subStatuses: ["ALL", "FUNDED", "WITHDRAWN"] }
+        };
+
+        // Sub-status display names
+        const subStatusDetails = {
+            "ALL": { text: "All" },
+            // Pre-Submission
+            "DRAFT": { text: "Draft" },
+            // Processing
+            "PENDING_REVIEW": { text: "Pending Review" },
+            "PENDING_APPROVAL": { text: "Pending Approval" },
+            "PENDING_REFERRAL": { text: "Pending Referral" },
+            "RETURNED_TO_REVIEWER": { text: "Pending Rework" },
+            "RESUBMITTED": { text: "Resubmitted" },
+            "APPROVAL_COMPLETE": { text: "Approval Complete" },
+            "CONTRACTS_SIGNED": { text: "Contracts Signed" },
+            // On Hold
+            "AWAITING_CUSTOMER_INFO": { text: "Action Required (Docs)" },
+            "AWAITING_CONTRACT_SIGNATURE": { text: "Action Required (E-Sign)" },
+            // Decisioned
+            "LOAN_CREATED": { text: "Loan Created (Waiting Checks)" },
+            "READY_FOR_DISBURSEMENT": { text: "Ready for Disbursement" },
+            "DECLINED": { text: "Declined" },
+            // Closed
+            "FUNDED": { text: "Funded" },
+            "WITHDRAWN": { text: "Withdrawn" }
+        };
+
+        // Map to quickly find a sub-status's main status
+        const subStatusToMainStatus = {};
+        Object.entries(mainStatusMap).forEach(([mainStatus, { subStatuses }]) => {
+            subStatuses.forEach(subStatus => {
+                if (subStatus !== "ALL") {
+                    subStatusToMainStatus[subStatus] = mainStatus;
+                }
+            });
+        });
+
+        // Current filter state
+        let currentMainStatusFilter = "ALL";
+        let currentSubStatusFilter = "ALL";
+        
+        // --- HELPER FUNCTIONS (*** CORRECTED ***) ---
+
+        function getStatusBadge(status) {
+            const baseClasses = "py-1 px-3 rounded-full font-semibold text-xs inline-block";
+            switch (status) {
+                // Processing
+                case "PENDING_REVIEW":
+                    return { badgeText: "PENDING REVIEW", displayText: "Pending Review", classes: `${baseClasses} bg-gray-200 text-gray-800` };
+                case "PENDING_APPROVAL":
+                    return { badgeText: "PENDING APPROVAL", displayText: "Pending Approval", classes: `${baseClasses} bg-blue-100 text-blue-800` };
+                case "PENDING_REFERRAL":
+                    return { badgeText: "PENDING REFERRAL", displayText: "Pending Referral", classes: `${baseClasses} bg-purple-100 text-purple-800` };
+                case "RETURNED_TO_REVIEWER":
+                    return { badgeText: "PENDING REWORK", displayText: "Returned to Reviewer", classes: `${baseClasses} bg-orange-100 text-orange-800` };
+                case "RESUBMITTED":
+                    return { badgeText: "RESUBMITTED", displayText: "Resubmitted", classes: `${baseClasses} bg-green-100 text-green-800` };
+                case "APPROVAL_COMPLETE":
+                    return { badgeText: "APPROVAL COMPLETE", displayText: "Approval Complete", classes: `${baseClasses} bg-blue-200 text-blue-900` };
+                case "CONTRACTS_SIGNED":
+                    return { badgeText: "CONTRACTS SIGNED", displayText: "Contracts Signed", classes: `${baseClasses} bg-blue-200 text-blue-900` };
+                
+                // On Hold
+                case "AWAITING_CUSTOMER_INFO":
+                    return { badgeText: "ACTION REQUIRED", displayText: "Awaiting Customer Info", classes: `${baseClasses} bg-yellow-100 text-yellow-800` };
+                case "AWAITING_CONTRACT_SIGNATURE":
+                    return { badgeText: "AWAITING E-SIGN", displayText: "Awaiting Contract Signature", classes: `${baseClasses} bg-yellow-100 text-yellow-800` };
+
+                // Decisioned
+                case "LOAN_CREATED":
+                    return { badgeText: "LOAN CREATED", displayText: "Loan Created (Waiting Checks)", classes: `${baseClasses} bg-emerald-100 text-emerald-800` };
+                case "READY_FOR_DISBURSEMENT":
+                    return { badgeText: "READY FOR DISBURSEMENT", displayText: "Ready for Disbursement", classes: `${baseClasses} bg-primary-200 text-primary-900 font-bold` };
+                case "DECLINED":
+                    return { badgeText: "DECLINED", displayText: "Declined", classes: `${baseClasses} bg-red-100 text-red-800` };
+
+                // Closed
+                case "FUNDED":
+                    return { badgeText: "FUNDED", displayText: "Funded", classes: `${baseClasses} bg-emerald-200 text-emerald-900` };
+                case "WITHDRAWN":
+                    return { badgeText: "WITHDRAWN", displayText: "Withdrawn", classes: `${baseClasses} bg-gray-100 text-gray-700` };
+                
+                // Pre-Submission
+                case "DRAFT":
+                    return { badgeText: "DRAFT", displayText: "Draft", classes: `${baseClasses} bg-gray-100 text-gray-700` };
+                
+                default:
+                    return { badgeText: status, displayText: status, classes: `${baseClasses} bg-gray-100 text-gray-700` };
+            }
+        }
+        
+        function getMainStatusInfo(subStatus) {
+            const colors = tailwind.config.theme.extend.colors.status;
+            const baseClasses = "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase inline-block text-center";
+            
+            const mainStatus = subStatusToMainStatus[subStatus] || "UNKNOWN";
+
+            switch (mainStatus) {
+                case "PRE-SUBMISSION":
+                    return { text: "PRE-SUBMISSION", classes: `${baseClasses} bg-status-pre-bg text-status-pre-text` };
+                case "PROCESSING":
+                    return { text: "PROCESSING", classes: `${baseClasses} bg-status-processing-bg text-status-processing-text` };
+                case "ON HOLD":
+                    return { text: "ON HOLD", classes: `${baseClasses} bg-status-onhold-bg text-status-onhold-text` };
+                case "DECISIONED":
+                    return { text: "DECISIONED", classes: `${baseClasses} bg-status-decisioned-bg text-status-decisioned-text` };
+                case "CLOSED":
+                    return { text: "CLOSED", classes: `${baseClasses} bg-status-closed-bg text-status-closed-text` };
+                default:
+                    return { text: "UNKNOWN", classes: `${baseClasses} bg-gray-100 text-gray-600` };
+            }
+        }
+
+        function getOriginatorText(originator, status) {
+            switch(status) {
+                case "PENDING_REVIEW": return "New Application";
+                case "DRAFT": return "By Customer";
+                case "RESUBMITTED": return "From Customer";
+                case "WITHDRAWN": return "By Customer";
+                case "APPROVAL_COMPLETE": return `Approved by ${originator}`;
+                case "AWAITING_CONTRACT_SIGNATURE": return "E-Sign Sent by System";
+                case "CONTRACTS_SIGNED": return "E-Signed by Customer";
+                case "LOAN_CREATED": return "API Call to SOLVI";
+                case "READY_FOR_DISBURSEMENT": return "All checks complete";
+                case "FUNDED": return "System Processed";
+                case "DECLINED": return `Declined by ${originator}`;
+                default:
+                    if (originator === "Approver") return "Requested by Approver";
+                    if (originator === "Reviewer") return "Sent by Reviewer";
+                    if (originator === "Referrer") return "Requested by Referrer";
+                    return `By ${originator}`;
+            }
+        }
+
+        // --- CORE APPLICATION LOGIC (Unchanged, all logic is data-driven) ---
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const appListElement = document.getElementById("application-list");
+            const detailPanel = document.getElementById("detail-panel");
+            const backdrop = document.getElementById("backdrop");
+            const closePanelButton = document.getElementById("close-panel");
+            const mainStatusSelect = document.getElementById("main-status-select");
+            const subStatusSelect = document.getElementById("sub-status-select");
+
+            // Apply the themed colors to the root for the new status badges
+            const root = document.documentElement;
+            const statusColors = tailwind.config.theme.extend.colors.status;
+            for (const status in statusColors) {
+                root.style.setProperty(`--color-status-${status}-bg`, statusColors[status].bg);
+                root.style.setProperty(`--color-status-${status}-text`, statusColors[status].text);
+            }
+            const dynamicStyle = document.createElement('style');
+            dynamicStyle.innerHTML = `
+                .bg-status-pre-bg { background-color: var(--color-status-pre-bg); }
+                .text-status-pre-text { color: var(--color-status-pre-text); }
+                .bg-status-processing-bg { background-color: var(--color-status-processing-bg); }
+                .text-status-processing-text { color: var(--color-status-processing-text); }
+                .bg-status-onhold-bg { background-color: var(--color-status-onhold-bg); }
+                .text-status-onhold-text { color: var(--color-status-onhold-text); }
+                .bg-status-decisioned-bg { background-color: var(--color-status-decisioned-bg); }
+                .text-status-decisioned-text { color: var(--color-status-decisioned-text); }
+                .bg-status-closed-bg { background-color: var(--color-status-closed-bg); }
+                .text-status-closed-text { color: var(--color-status-closed-text); }
+            `;
+            document.head.appendChild(dynamicStyle);
+
+
+            /**
+             * Renders the Level 1 Main Status dropdown.
+             */
+            function renderMainStatusDropdown() {
+                let html = "";
+                Object.entries(mainStatusMap).forEach(([mainStatusId, { text }]) => {
+                    const isSelected = mainStatusId === currentMainStatusFilter;
+                    html += `<option value="${mainStatusId}" ${isSelected ? 'selected' : ''}>${text}</option>`;
+                });
+                mainStatusSelect.innerHTML = html;
+            }
+
+            /**
+             * Renders the Level 2 Sub-Status dropdown based on the main filter.
+             */
+            function renderSubStatusDropdown() {
+                const subStatusList = mainStatusMap[currentMainStatusFilter].subStatuses;
+                
+                // If only one sub-status ("ALL"), disable the dropdown
+                if (subStatusList.length <= 1) {
+                    subStatusSelect.innerHTML = `<option value="ALL">All</option>`;
+                    subStatusSelect.disabled = true;
+                    return;
+                }
+                
+                // Enable dropdown and populate options
+                subStatusSelect.disabled = false;
+                let html = "";
+                subStatusList.forEach(subStatusId => {
+                    const isActive = subStatusId === currentSubStatusFilter;
+                    
+                    let text = subStatusDetails[subStatusId].text;
+                    if (subStatusId === "ALL") {
+                        text = `All ${mainStatusMap[currentMainStatusFilter].text}`;
+                    }
+                    
+                    html += `<option value="${subStatusId}" ${isActive ? 'selected' : ''}>${text}</option>`;
+                });
+                subStatusSelect.innerHTML = html;
+            }
+
+            /**
+             * Renders the main list of applications based on both filters. (Unchanged)
+             */
+            function renderApplicationList() {
+                let html = `
+                    <div class="md:hidden p-5 border-b border-gray-200">
+                        <h2 class="font-bold text-gray-500 text-sm uppercase">Applications</h2>
+                    </div>
+                `;
+
+                // Filter logic
+                const filteredApps = applications.filter(app => {
+                    // Main Status filter
+                    if (currentMainStatusFilter !== "ALL") {
+                        const appMainStatus = subStatusToMainStatus[app.status];
+                        if (appMainStatus !== currentMainStatusFilter) {
+                            return false;
+                        }
+                    }
+                    // Sub-Status filter
+                    if (currentSubStatusFilter !== "ALL") {
+                        if (app.status !== currentSubStatusFilter) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }).sort((a, b) => a.id < b.id ? 1 : -1);
+
+                if (filteredApps.length === 0) {
+                    html += `<div class="p-8 text-center text-gray-500">No applications match the selected filters.</div>`;
+                }
+
+                filteredApps.forEach(app => {
+                    const mainStatus = getMainStatusInfo(app.status);
+                    const subStatus = getStatusBadge(app.status); 
+                    const originatorText = getOriginatorText(app.originator, app.status);
+
+                    html += `
+                    <div class="app-row block p-5 border-b border-gray-200 last:border-b-0 cursor-pointer hover:bg-gray-50 md:grid md:grid-cols-5 md:gap-4 md:items-center" data-app-id="${app.id}">
+                        
+                        <!-- Mobile View -->
+                        <div class="flex justify-between items-center md:hidden">
+                            <div>
+                                <div class="font-bold text-gray-800">${app.customerName}</div>
+                                <div class="text-sm text-gray-500">#${app.id}</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="${mainStatus.classes} max-w-[120px] truncate">${mainStatus.text}</span>
+                                <div class="text-sm text-gray-500 mt-1">${subStatus.displayText}</div>
+                            </div>
+                        </div>
+
+                        <!-- Desktop View -->
+                        <div class="hidden md:block col-span-1 font-medium text-gray-800">#${app.id}</div>
+                        <div class="hidden md:block col-span-1 font-medium text-gray-800">${app.customerName}</div>
+                        <div class="hidden md:block col-span-1 text-gray-600">${app.appType}</div>
+                        
+                        <div class="hidden md:flex col-span-1 flex-col justify-center">
+                            <span class="${mainStatus.classes}">${mainStatus.text}</span>
+                            <span class="font-medium text-gray-800 text-sm mt-1.5">${subStatus.displayText}</span>
+                            <small class="text-gray-500 text-xs italic">${originatorText}</small>
+                        </div>
+                        <div class="hidden md:block col-span-1 font-medium text-gray-800">${app.actor}</div>
+                    </div>
+                    `;
+                });
+                appListElement.innerHTML = html;
+                addListClickListeners();
+            }
+
+            /**
+             * Renders the details into the side panel. (Unchanged)
+             */
+            function renderPanel(data) {
+                const badge = getStatusBadge(data.status);
+
+                document.getElementById("panel-header-title").textContent = `Application #${data.id}`;
+                document.getElementById("panel-app-id").textContent = `${data.customerName}`;
+                document.getElementById("panel-loan-type").textContent = `${data.loanType} - ${data.loanAmount}`;
+                
+                document.getElementById("panel-status-badge").innerHTML = `<span class="${badge.classes}">${badge.badgeText}</span>`;
+                document.getElementById("panel-waiting-on").textContent = data.waitingOn;
+                document.getElementById("panel-requested-by").textContent = data.requestedBy;
+
+                const historyList = document.getElementById("panel-history-list");
+                let historyHtml = "";
+                data.history.forEach(item => {
+                    historyHtml += `
+                    <li class="relative pb-6">
+                        <div class="absolute -left-[5px] top-1.5 w-2.5 h-2.5 bg-gray-300 rounded-full"></div>
+                        <div class="ml-4">
+                            <div class="text-xs text-gray-500 font-medium">${item.timestamp}</div>
+                            <div class="font-semibold text-sm text-gray-800">${item.action}</div>
+                            <p class="text-sm text-gray-600">${item.note || ''}</p>
+                        </div>
+                    </li>
+                    `;
+                });
+                historyHtml += `<li class="relative"><div class="absolute -left-[5px] top-1.5 w-2.5 h-2.5 bg-gray-300 rounded-full"></div></li>`;
+                
+                historyList.innerHTML = historyHtml;
+            }
+
+            /**
+             * Attaches click listeners to all application rows. (Unchanged)
+             */
+            function addListClickListeners() {
+                document.querySelectorAll(".app-row").forEach(row => {
+                    row.addEventListener("click", () => {
+                        const appId = row.getAttribute("data-app-id");
+                        openPanel(appId);
+                    });
+                });
+            }
+
+            /**
+             * Attaches change listener to the Main Status (L1) dropdown.
+             */
+            mainStatusSelect.addEventListener("change", (e) => {
+                currentMainStatusFilter = e.target.value;
+                currentSubStatusFilter = "ALL"; // Reset sub-filter
+                renderSubStatusDropdown(); // Update L2 dropdown
+                renderApplicationList();
+            });
+            
+            /**
+             * Attaches change listener to the Sub-Status (L2) dropdown.
+             */
+            subStatusSelect.addEventListener("change", (e) => {
+                currentSubStatusFilter = e.target.value;
+                renderApplicationList();
+            });
+
+
+            /**
+             * Opens the side panel with data for the given app ID. (Unchanged)
+             */
+            function openPanel(appId) {
+                const data = applicationDetails[appId];
+                if (!data) {
+                    console.error("No details found for app ID:", appId);
+                    return;
+                }
+                
+                renderPanel(data);
+                detailPanel.classList.remove("translate-x-full");
+                backdrop.classList.remove("hidden");
+                backdrop.classList.add("opacity-100");
+                document.body.classList.add("overflow-hidden");
+            }
+
+            /**
+            * Closes the side panel. (Unchanged)
+            */
+            function closePanel() {
+                detailPanel.classList.add("translate-x-full");
+                backdrop.classList.remove("opacity-100");
+                backdrop.classList.add("hidden");
+                document.body.classList.remove("overflow-hidden");
+            }
+
+            // --- INITIALIZATION ---
+            renderMainStatusDropdown();
+            renderSubStatusDropdown();
+            renderApplicationList();
+
+            // Attach close listeners
+            closePanelButton.addEventListener("click", closePanel);
+            backdrop.addEventListener("click", closePanel);
+        });
+    </script>
+</body>
+</html>
